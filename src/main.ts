@@ -383,26 +383,44 @@ export default class ComponentsPlugin extends Plugin {
         // Find all <code> elements (inline code blocks)
         const codeEls = el.querySelectorAll('code');
 
+        // Diagnostic log (always on for debugging)
+        if (codeEls.length > 0) {
+            console.log(
+                `[oc-inline] Post-processor called. ${codeEls.length} <code> elements found, ${this.components.size} components loaded.`
+            );
+        }
+
         for (const codeEl of Array.from(codeEls)) {
+            // Skip <code> inside <pre> (fenced code blocks)
+            if (codeEl.parentElement?.tagName === 'PRE') continue;
+
             const text = codeEl.textContent?.trim() ?? '';
 
             // Must start with "c:" prefix
             if (!text.startsWith('c:')) continue;
+
+            console.log(`[oc-inline] Found c: code element: "${text}"`);
 
             // Extract the invocation part after "c:"
             const invocationStr = text.slice(2).trim();
             if (!invocationStr) continue;
 
             const invocation = parseComponentInvocation(invocationStr);
-            if (!invocation) continue;
-
-            const definition = this.components.get(invocation.name);
-            if (!definition) {
-                this.debug(`Inline: component "${invocation.name}" not found`);
+            if (!invocation) {
+                console.log(`[oc-inline] Failed to parse invocation: "${invocationStr}"`);
                 continue;
             }
 
-            this.debug(`Inline rendering: ${invocation.name}`, invocation.props);
+            console.log(`[oc-inline] Parsed: name="${invocation.name}", props=`, invocation.props);
+            console.log(`[oc-inline] Available components: [${[...this.components.keys()].join(', ')}]`);
+
+            const definition = this.components.get(invocation.name);
+            if (!definition) {
+                console.log(`[oc-inline] Component "${invocation.name}" NOT FOUND in loaded components`);
+                continue;
+            }
+
+            console.log(`[oc-inline] Rendering "${invocation.name}" inline`);
 
             // Create an inline span and render the component into it
             const span = document.createElement('span');
