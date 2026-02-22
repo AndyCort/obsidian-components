@@ -8,6 +8,7 @@ import {
 } from '@codemirror/view';
 import { Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
+import { editorLivePreviewField } from 'obsidian';
 import { renderComponent } from './renderer';
 import type { ComponentDefinition } from './types';
 
@@ -90,7 +91,7 @@ export function createInlineComponentPlugin(
             }
 
             update(update: ViewUpdate) {
-                if (update.docChanged || update.viewportChanged) {
+                if (update.docChanged || update.viewportChanged || update.startState.field(editorLivePreviewField) !== update.state.field(editorLivePreviewField)) {
                     this.decorations = this.buildDecorations(update.view);
                 }
             }
@@ -99,6 +100,8 @@ export function createInlineComponentPlugin(
                 const decorations: Range<Decoration>[] = [];
                 const components = getComponents();
 
+                // Only render in Live Preview, not Source mode
+                if (!view.state.field(editorLivePreviewField)) return Decoration.none;
                 if (components.size === 0) return Decoration.none;
 
                 for (const { from, to } of view.visibleRanges) {
