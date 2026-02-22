@@ -32,8 +32,20 @@ export interface ComponentInvocation {
 export interface ComponentsPluginSettings {
     /** Folder path (relative to vault root) where component definitions live */
     componentsFolder: string;
+    /** Whether to enable live reload when component files change */
+    liveReload: boolean;
+    /** Whether to allow <script> execution inside components */
+    enableScripts: boolean;
+    /** Whether to show debug info in console */
+    debugMode: boolean;
+    /** Default display mode: 'inline' or 'block' */
+    displayMode: 'inline' | 'block';
 }
 
 export const DEFAULT_SETTINGS: ComponentsPluginSettings = {
     componentsFolder: '_components',
+    liveReload: true,
+    enableScripts: true,
+    debugMode: false,
+    displayMode: 'inline',
 };

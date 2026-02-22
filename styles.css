@@ -7,8 +7,16 @@
 	vertical-align: top;
 }
 
+.obsidian-component.oc-block {
+	display: block;
+}
+
 .obsidian-component .oc-inner {
 	display: inline-block;
+}
+
+.obsidian-component.oc-block .oc-inner {
+	display: block;
 }
 
 /* Error display */
@@ -37,26 +45,270 @@
 	line-height: 1.4;
 }
 
-/* Settings page */
-.oc-settings-info {
-	margin-top: 16px;
-	padding: 12px 16px;
+/* ─── Settings Panel ─── */
+
+.oc-settings .oc-settings-header {
+	margin-bottom: 24px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.oc-settings .oc-settings-header h2 {
+	margin: 0 0 4px 0;
+	font-size: 22px;
+}
+
+.oc-settings .oc-settings-subtitle {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: 14px;
+}
+
+/* Section Headers */
+.oc-section-header {
+	margin-top: 28px;
+	margin-bottom: 12px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.oc-section-header h3 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+/* Toolbar */
+.oc-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+	padding: 8px 14px;
 	background: var(--background-secondary);
 	border-radius: 8px;
 }
 
-.oc-settings-count {
-	font-weight: 600;
-	margin: 0 0 8px 0;
-}
-
-.oc-settings-list {
-	margin: 0;
-	padding-left: 20px;
-}
-
-.oc-settings-list li {
-	padding: 2px 0;
-	font-family: var(--font-monospace);
+.oc-toolbar-count {
 	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.oc-toolbar-btn {
+	border: none;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	padding: 4px 14px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.15s ease;
+}
+
+.oc-toolbar-btn:hover {
+	opacity: 0.85;
+}
+
+/* Empty State */
+.oc-empty-state {
+	text-align: center;
+	padding: 32px 16px;
+	background: var(--background-secondary);
+	border-radius: 12px;
+	margin-top: 8px;
+}
+
+.oc-empty-icon {
+	font-size: 36px;
+	margin-bottom: 8px;
+}
+
+.oc-empty-title {
+	margin: 0 0 4px 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.oc-empty-desc {
+	margin: 0;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+/* Components Grid */
+.oc-components-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.oc-comp-card {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 14px 16px;
+	transition: border-color 0.15s ease;
+}
+
+.oc-comp-card:hover {
+	border-color: var(--interactive-accent);
+}
+
+.oc-comp-card-head {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	margin-bottom: 8px;
+}
+
+.oc-comp-card-name {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+}
+
+.oc-comp-card-desc {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+/* Props */
+.oc-comp-card-props {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.oc-comp-card-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.oc-prop-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: var(--background-primary);
+	font-size: 11px;
+	font-family: var(--font-monospace);
+}
+
+.oc-prop-key {
+	color: var(--interactive-accent);
+	font-weight: 600;
+}
+
+.oc-prop-val {
+	color: var(--text-muted);
+}
+
+/* Usage snippet */
+.oc-comp-card-usage {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.oc-usage-code {
+	flex: 1;
+	font-size: 12px;
+	padding: 6px 10px;
+	border-radius: 6px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+.oc-copy-btn {
+	border: none;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	padding: 4px 10px;
+	border-radius: 6px;
+	font-size: 11px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	flex-shrink: 0;
+}
+
+.oc-copy-btn:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* Source path */
+.oc-comp-card-path {
+	font-size: 11px;
+	color: var(--text-faint);
+}
+
+/* Help section */
+.oc-help {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 8px;
+}
+
+.oc-help-item {
+	display: flex;
+	gap: 14px;
+	align-items: flex-start;
+	padding: 12px 14px;
+	background: var(--background-secondary);
+	border-radius: 10px;
+}
+
+.oc-help-step {
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 50%;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.oc-help-content {
+	flex: 1;
+}
+
+.oc-help-content strong {
+	display: block;
+	font-size: 14px;
+	margin-bottom: 2px;
+	color: var(--text-normal);
+}
+
+.oc-help-content p {
+	margin: 0;
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.oc-help-content code {
+	font-size: 11px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--background-primary);
 }

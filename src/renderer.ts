@@ -1,5 +1,15 @@
 import { ComponentDefinition } from './types';
 
+export interface RenderOptions {
+    enableScripts: boolean;
+    displayMode: 'inline' | 'block';
+}
+
+const DEFAULT_RENDER_OPTIONS: RenderOptions = {
+    enableScripts: true,
+    displayMode: 'inline',
+};
+
 /**
  * Render a component into a container element.
  *
@@ -11,11 +21,17 @@ import { ComponentDefinition } from './types';
 export function renderComponent(
     container: HTMLElement,
     definition: ComponentDefinition,
-    userProps: Record<string, string>
+    userProps: Record<string, string>,
+    options?: Partial<RenderOptions>
 ): void {
+    const opts = { ...DEFAULT_RENDER_OPTIONS, ...options };
+
     // Generate a unique scope ID for CSS isolation
     const scopeId = `oc-${definition.name}-${randomId()}`;
     container.classList.add('obsidian-component');
+    if (opts.displayMode === 'block') {
+        container.classList.add('oc-block');
+    }
     container.setAttribute('data-component', definition.name);
     container.setAttribute('data-scope', scopeId);
 
@@ -58,8 +74,8 @@ export function renderComponent(
     wrapper.innerHTML = html;
     container.appendChild(wrapper);
 
-    // Execute script if present
-    if (definition.script) {
+    // Execute script if present and allowed
+    if (definition.script && opts.enableScripts) {
         try {
             const scriptFn = new Function('el', 'props', definition.script);
             scriptFn(wrapper, mergedProps);

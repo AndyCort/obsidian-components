@@ -65,7 +65,8 @@ export default class ComponentsPlugin extends Plugin {
         // Watch for file changes in the vault to auto-refresh components
         this.registerEvent(
             this.app.vault.on('modify', async (file) => {
-                if (file instanceof TFile && this.isComponentFile(file)) {
+                if (this.settings.liveReload && file instanceof TFile && this.isComponentFile(file)) {
+                    if (this.settings.debugMode) console.log(`[obsidian-components] Live reload: ${file.path}`);
                     await this.loadSingleComponent(file);
                 }
             })
@@ -73,7 +74,8 @@ export default class ComponentsPlugin extends Plugin {
 
         this.registerEvent(
             this.app.vault.on('create', async (file) => {
-                if (file instanceof TFile && this.isComponentFile(file)) {
+                if (this.settings.liveReload && file instanceof TFile && this.isComponentFile(file)) {
+                    if (this.settings.debugMode) console.log(`[obsidian-components] New component: ${file.path}`);
                     await this.loadSingleComponent(file);
                 }
             })
@@ -84,6 +86,7 @@ export default class ComponentsPlugin extends Plugin {
                 if (file instanceof TFile && this.isComponentFile(file)) {
                     const name = file.basename;
                     this.components.delete(name);
+                    if (this.settings.debugMode) console.log(`[obsidian-components] Deleted component: ${name}`);
                 }
             })
         );
@@ -91,12 +94,10 @@ export default class ComponentsPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('rename', async (file, oldPath) => {
                 if (file instanceof TFile) {
-                    // Remove old entry
                     const oldName = oldPath.split('/').pop()?.replace(/\.md$/i, '') ?? '';
                     if (oldName) {
                         this.components.delete(oldName);
                     }
-                    // Add new if it's in components folder
                     if (this.isComponentFile(file)) {
                         await this.loadSingleComponent(file);
                     }
@@ -186,8 +187,15 @@ export default class ComponentsPlugin extends Plugin {
                 continue;
             }
 
+            if (this.settings.debugMode) {
+                console.log(`[obsidian-components] Rendering: ${invocation.name}`, invocation.props);
+            }
+
             const componentEl = container.createDiv();
-            renderComponent(componentEl, definition, invocation.props);
+            renderComponent(componentEl, definition, invocation.props, {
+                enableScripts: this.settings.enableScripts,
+                displayMode: this.settings.displayMode,
+            });
         }
     }
 
@@ -221,5 +229,9 @@ export default class ComponentsPlugin extends Plugin {
 
     getComponentNames(): string[] {
         return [...this.components.keys()];
+    }
+
+    getComponentDefinition(name: string): ComponentDefinition | undefined {
+        return this.components.get(name);
     }
 }
