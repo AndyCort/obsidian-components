@@ -17,7 +17,7 @@ export class ComponentsSettingTab extends PluginSettingTab {
 
         // ─── Header ─────────────────────────────────────────────
         const headerEl = containerEl.createDiv({ cls: 'oc-settings-header' });
-        headerEl.createEl('h2', { text: '⚡ Obsidian Components' });
+        headerEl.createEl('h2', { text: '⚡ Components' });
         headerEl.createEl('p', {
             text: '在笔记中创建和复用自定义 UI 组件',
             cls: 'oc-settings-subtitle',

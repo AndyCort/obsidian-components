@@ -190,7 +190,7 @@ export default class ComponentsPlugin extends Plugin {
 
         // ─── Ribbon Icon ────────────────────────────────────────
 
-        this.addRibbonIcon('blocks', 'Obsidian Components: 插入组件', () => {
+        this.addRibbonIcon('blocks', 'Components: 插入组件', () => {
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (view) {
                 const defs = [...this.components.values()];
