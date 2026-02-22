@@ -114,6 +114,71 @@ props:
   line-height: 1.6;
 }
 </style>`,
+
+    'callout.md': `---
+name: callout
+description: 彩色提示框
+props:
+  type: info
+  title: 提示
+  content: 这是一条提示信息
+---
+
+<div class="oc-callout oc-callout--{{type}}">
+  <div class="oc-callout__title">
+    <span class="oc-callout__icon"></span>
+    {{title}}
+  </div>
+  <div class="oc-callout__content">{{content}}</div>
+</div>
+
+<style>
+.oc-callout {
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 4px 0;
+  border-left: 4px solid;
+  font-size: 14px;
+}
+.oc-callout--info { background: rgba(59,130,246,0.08); border-color: #3b82f6; }
+.oc-callout--success { background: rgba(34,197,94,0.08); border-color: #22c55e; }
+.oc-callout--warning { background: rgba(245,158,11,0.08); border-color: #f59e0b; }
+.oc-callout--danger { background: rgba(239,68,68,0.08); border-color: #ef4444; }
+.oc-callout__title { font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.oc-callout--info .oc-callout__icon::before { content: "ℹ️"; }
+.oc-callout--success .oc-callout__icon::before { content: "✅"; }
+.oc-callout--warning .oc-callout__icon::before { content: "⚠️"; }
+.oc-callout--danger .oc-callout__icon::before { content: "🚫"; }
+.oc-callout__content { color: var(--text-muted); }
+</style>`,
+
+    'progress.md': `---
+name: progress
+description: 进度条组件
+props:
+  value: "70"
+  color: "#6366f1"
+  label: 进度
+---
+
+<div class="oc-progress">
+  <div class="oc-progress__header">
+    <span class="oc-progress__label">{{label}}</span>
+    <span class="oc-progress__value">{{value}}%</span>
+  </div>
+  <div class="oc-progress__track">
+    <div class="oc-progress__bar" style="width: {{value}}%; background: {{color}};"></div>
+  </div>
+</div>
+
+<style>
+.oc-progress { min-width: 200px; max-width: 400px; }
+.oc-progress__header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.oc-progress__label { font-size: 13px; font-weight: 600; color: var(--text-normal); }
+.oc-progress__value { font-size: 12px; font-weight: 700; color: var(--text-muted); font-family: var(--font-monospace); }
+.oc-progress__track { height: 8px; border-radius: 999px; background: var(--background-modifier-border); overflow: hidden; }
+.oc-progress__bar { height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+</style>`,
 };
 
 export default class ComponentsPlugin extends Plugin {
@@ -389,49 +454,26 @@ export default class ComponentsPlugin extends Plugin {
      * Syntax: `c:component_name(prop="value")`
      */
     processInlineComponents(el: HTMLElement): void {
-        // Find all <code> elements (inline code blocks)
         const codeEls = el.querySelectorAll('code');
-
-        // Diagnostic log (always on for debugging)
-        if (codeEls.length > 0) {
-            console.log(
-                `[oc-inline] Post-processor called. ${codeEls.length} <code> elements found, ${this.components.size} components loaded.`
-            );
-        }
 
         for (const codeEl of Array.from(codeEls)) {
             // Skip <code> inside <pre> (fenced code blocks)
             if (codeEl.parentElement?.tagName === 'PRE') continue;
 
             const text = codeEl.textContent?.trim() ?? '';
-
-            // Must start with "c:" prefix
             if (!text.startsWith('c:')) continue;
 
-            console.log(`[oc-inline] Found c: code element: "${text}"`);
-
-            // Extract the invocation part after "c:"
             const invocationStr = text.slice(2).trim();
             if (!invocationStr) continue;
 
             const invocation = parseComponentInvocation(invocationStr);
-            if (!invocation) {
-                console.log(`[oc-inline] Failed to parse invocation: "${invocationStr}"`);
-                continue;
-            }
-
-            console.log(`[oc-inline] Parsed: name="${invocation.name}", props=`, invocation.props);
-            console.log(`[oc-inline] Available components: [${[...this.components.keys()].join(', ')}]`);
+            if (!invocation) continue;
 
             const definition = this.components.get(invocation.name);
-            if (!definition) {
-                console.log(`[oc-inline] Component "${invocation.name}" NOT FOUND in loaded components`);
-                continue;
-            }
+            if (!definition) continue;
 
-            console.log(`[oc-inline] Rendering "${invocation.name}" inline`);
+            this.debug(`Inline rendering: ${invocation.name}`, invocation.props);
 
-            // Create an inline span and render the component into it
             const span = document.createElement('span');
             span.className = 'oc-inline-wrapper';
             renderComponent(span, definition, invocation.props, {
@@ -439,7 +481,6 @@ export default class ComponentsPlugin extends Plugin {
                 displayMode: 'inline',
             });
 
-            // Replace the <code> element with the rendered component
             codeEl.parentNode?.replaceChild(span, codeEl);
         }
     }
