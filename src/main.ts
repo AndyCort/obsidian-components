@@ -1,8 +1,119 @@
-import { Notice, Plugin, TFile, TFolder } from 'obsidian';
+import { Editor, MarkdownView, Notice, Plugin, TFile, TFolder } from 'obsidian';
 import { ComponentDefinition, ComponentsPluginSettings, DEFAULT_SETTINGS } from './types';
 import { parseCodeBlock, parseComponentDefinition } from './parser';
 import { renderComponent, renderError } from './renderer';
 import { ComponentsSettingTab } from './settings';
+import { ComponentPickerModal } from './component-picker';
+
+// ─── Example component templates for auto-creation ────────────────
+
+const EXAMPLE_COMPONENTS: Record<string, string> = {
+    'button.md': `---
+name: button
+description: 一个可自定义的按钮
+props:
+  text: Click Me
+  color: "#7c5cbf"
+  size: medium
+---
+
+<button class="oc-btn oc-btn--{{size}}" style="background: {{color}};">
+  {{text}}
+</button>
+
+<style>
+.oc-btn {
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+}
+.oc-btn--small { padding: 4px 14px; font-size: 12px; }
+.oc-btn--medium { padding: 8px 22px; font-size: 14px; }
+.oc-btn--large { padding: 12px 32px; font-size: 16px; }
+.oc-btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.oc-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+</style>`,
+
+    'card.md': `---
+name: card
+description: 带标题和内容的卡片
+props:
+  title: 标题
+  content: 这里是内容
+  color: "#6366f1"
+---
+
+<div class="oc-card">
+  <div class="oc-card__header" style="background: {{color}};">
+    <span class="oc-card__title">{{title}}</span>
+  </div>
+  <div class="oc-card__body">
+    <p>{{content}}</p>
+  </div>
+</div>
+
+<style>
+.oc-card {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-width: 320px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--background-primary);
+}
+.oc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.oc-card__header { padding: 16px 20px; color: white; }
+.oc-card__title { font-size: 16px; font-weight: 700; }
+.oc-card__body {
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-normal);
+}
+.oc-card__body p { margin: 0; }
+</style>`,
+
+    'badge.md': `---
+name: badge
+description: 小徽章/标签
+props:
+  text: NEW
+  color: "#ef4444"
+---
+
+<span class="oc-badge" style="background: {{color}};">{{text}}</span>
+
+<style>
+.oc-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+</style>`,
+};
 
 export default class ComponentsPlugin extends Plugin {
     settings: ComponentsPluginSettings;
@@ -14,6 +125,7 @@ export default class ComponentsPlugin extends Plugin {
 
         // Load all component definitions from the components folder
         this.app.workspace.onLayoutReady(async () => {
+            await this.ensureComponentsFolder();
             await this.loadComponentDefinitions();
         });
 
@@ -22,7 +134,9 @@ export default class ComponentsPlugin extends Plugin {
             this.processComponentBlock(source, el);
         });
 
-        // Add command: reload components
+        // ─── Commands ───────────────────────────────────────────
+
+        // Reload components
         this.addCommand({
             id: 'reload-components',
             name: '重新加载所有组件',
@@ -32,41 +146,64 @@ export default class ComponentsPlugin extends Plugin {
             },
         });
 
-        // Add command: insert component
+        // Insert component via picker modal
         this.addCommand({
             id: 'insert-component',
             name: '插入组件',
-            editorCallback: (editor) => {
-                const names = [...this.components.keys()];
-                if (names.length === 0) {
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                const defs = [...this.components.values()];
+                if (defs.length === 0) {
                     new Notice('暂无可用组件。请先在组件文件夹中创建组件定义。');
                     return;
                 }
-                // Insert a component template at cursor
-                const firstComponent = names[0] ?? 'component_name';
-                const def = this.components.get(firstComponent);
-                let propsStr = '';
-                if (def && Object.keys(def.props).length > 0) {
-                    propsStr = Object.entries(def.props)
-                        .map(([k, v]) => `${k}="${v}"`)
-                        .join(', ');
-                }
-                const snippet = `\`\`\`component\n${firstComponent}(${propsStr})\n\`\`\``;
-                editor.replaceSelection(snippet);
+                new ComponentPickerModal(this.app, defs, editor).open();
             },
         });
 
-        // Add ribbon icon
-        this.addRibbonIcon('component', 'Obsidian Components', async () => {
-            await this.loadComponentDefinitions();
-            new Notice(`已加载 ${this.components.size} 个组件`);
+        // Open components folder
+        this.addCommand({
+            id: 'open-components-folder',
+            name: '打开组件文件夹',
+            callback: async () => {
+                const folder = this.app.vault.getAbstractFileByPath(
+                    this.settings.componentsFolder
+                );
+                if (folder && folder instanceof TFolder) {
+                    // Reveal in file explorer
+                    const leaf = this.app.workspace.getLeaf(false);
+                    if (leaf) {
+                        await leaf.openFile(
+                            folder.children.find((f): f is TFile => f instanceof TFile) as TFile
+                        );
+                    }
+                } else {
+                    new Notice(`组件文件夹 "${this.settings.componentsFolder}" 不存在`);
+                }
+            },
         });
 
-        // Watch for file changes in the vault to auto-refresh components
+        // ─── Ribbon Icon ────────────────────────────────────────
+
+        this.addRibbonIcon('blocks', 'Obsidian Components: 插入组件', () => {
+            const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (view) {
+                const defs = [...this.components.values()];
+                if (defs.length === 0) {
+                    new Notice('暂无可用组件');
+                    return;
+                }
+                new ComponentPickerModal(this.app, defs, view.editor).open();
+            } else {
+                new Notice('请先打开一个笔记');
+            }
+        });
+
+        // ─── File Watchers ──────────────────────────────────────
+
         this.registerEvent(
             this.app.vault.on('modify', async (file) => {
                 if (this.settings.liveReload && file instanceof TFile && this.isComponentFile(file)) {
-                    if (this.settings.debugMode) console.log(`[obsidian-components] Live reload: ${file.path}`);
+                    this.debug(`Live reload: ${file.path}`);
                     await this.loadSingleComponent(file);
                 }
             })
@@ -75,7 +212,7 @@ export default class ComponentsPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('create', async (file) => {
                 if (this.settings.liveReload && file instanceof TFile && this.isComponentFile(file)) {
-                    if (this.settings.debugMode) console.log(`[obsidian-components] New component: ${file.path}`);
+                    this.debug(`New component: ${file.path}`);
                     await this.loadSingleComponent(file);
                 }
             })
@@ -86,7 +223,7 @@ export default class ComponentsPlugin extends Plugin {
                 if (file instanceof TFile && this.isComponentFile(file)) {
                     const name = file.basename;
                     this.components.delete(name);
-                    if (this.settings.debugMode) console.log(`[obsidian-components] Deleted component: ${name}`);
+                    this.debug(`Deleted component: ${name}`);
                 }
             })
         );
@@ -105,7 +242,8 @@ export default class ComponentsPlugin extends Plugin {
             })
         );
 
-        // Add settings tab
+        // ─── Settings Tab ───────────────────────────────────────
+
         this.addSettingTab(new ComponentsSettingTab(this.app, this));
     }
 
@@ -113,8 +251,34 @@ export default class ComponentsPlugin extends Plugin {
         this.components.clear();
     }
 
+    // ─── Component Loading ──────────────────────────────────────────
+
     /**
-     * Load all component definitions from the configured folder.
+     * Ensure the components folder exists. On first run, create it with examples.
+     */
+    async ensureComponentsFolder(): Promise<void> {
+        const folderPath = this.settings.componentsFolder;
+        const existing = this.app.vault.getAbstractFileByPath(folderPath);
+
+        if (!existing) {
+            try {
+                await this.app.vault.createFolder(folderPath);
+                this.debug(`Created components folder: ${folderPath}`);
+
+                // Write example components
+                for (const [filename, content] of Object.entries(EXAMPLE_COMPONENTS)) {
+                    await this.app.vault.create(`${folderPath}/${filename}`, content);
+                }
+
+                new Notice(`已创建组件文件夹 "${folderPath}" 并写入 ${Object.keys(EXAMPLE_COMPONENTS).length} 个示例组件`);
+            } catch (e) {
+                console.error('[obsidian-components] Failed to create components folder:', e);
+            }
+        }
+    }
+
+    /**
+     * Load all component definitions, recursively scanning subfolders.
      */
     async loadComponentDefinitions(): Promise<void> {
         this.components.clear();
@@ -124,23 +288,28 @@ export default class ComponentsPlugin extends Plugin {
         );
 
         if (!folder || !(folder instanceof TFolder)) {
-            console.log(
-                `[obsidian-components] Components folder "${this.settings.componentsFolder}" not found. Will create it when components are saved.`
-            );
+            this.debug(`Components folder "${this.settings.componentsFolder}" not found.`);
             return;
         }
 
-        const files = folder.children.filter(
-            (f): f is TFile => f instanceof TFile && f.extension === 'md'
-        );
+        await this.loadComponentsFromFolder(folder);
 
-        for (const file of files) {
-            await this.loadSingleComponent(file);
+        this.debug(
+            `Loaded ${this.components.size} component(s): ${[...this.components.keys()].join(', ')}`
+        );
+    }
+
+    /**
+     * Recursively load components from a folder and its subfolders.
+     */
+    private async loadComponentsFromFolder(folder: TFolder): Promise<void> {
+        for (const child of folder.children) {
+            if (child instanceof TFile && child.extension === 'md') {
+                await this.loadSingleComponent(child);
+            } else if (child instanceof TFolder) {
+                await this.loadComponentsFromFolder(child);
+            }
         }
-
-        console.log(
-            `[obsidian-components] Loaded ${this.components.size} component(s): ${[...this.components.keys()].join(', ')}`
-        );
     }
 
     /**
@@ -160,6 +329,8 @@ export default class ComponentsPlugin extends Plugin {
             );
         }
     }
+
+    // ─── Rendering ──────────────────────────────────────────────────
 
     /**
      * Process a ```component code block.
@@ -187,9 +358,7 @@ export default class ComponentsPlugin extends Plugin {
                 continue;
             }
 
-            if (this.settings.debugMode) {
-                console.log(`[obsidian-components] Rendering: ${invocation.name}`, invocation.props);
-            }
+            this.debug(`Rendering: ${invocation.name}`, invocation.props);
 
             const componentEl = container.createDiv();
             renderComponent(componentEl, definition, invocation.props, {
@@ -199,8 +368,10 @@ export default class ComponentsPlugin extends Plugin {
         }
     }
 
+    // ─── Helpers ────────────────────────────────────────────────────
+
     /**
-     * Check if a file is inside the components folder.
+     * Check if a file is inside the components folder (including subfolders).
      */
     isComponentFile(file: TFile): boolean {
         return (
@@ -209,7 +380,16 @@ export default class ComponentsPlugin extends Plugin {
         );
     }
 
-    // ─── Settings helpers ───────────────────────────────────────────
+    /**
+     * Debug logging helper — only logs when debugMode is enabled.
+     */
+    private debug(message: string, ...args: unknown[]): void {
+        if (this.settings.debugMode) {
+            console.log(`[obsidian-components] ${message}`, ...args);
+        }
+    }
+
+    // ─── Settings ───────────────────────────────────────────────────
 
     async loadSettings(): Promise<void> {
         this.settings = Object.assign(

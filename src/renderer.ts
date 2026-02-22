@@ -41,8 +41,28 @@ export function renderComponent(
         ...userProps,
     };
 
-    // Replace template placeholders {{key}}
+    // Replace template placeholders and expressions
     let html = definition.template;
+
+    // 1. Process {{#if prop}}...{{/if}} conditional blocks
+    html = html.replace(
+        /\{\{#if\s+([\w-]+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
+        (_match, key: string, content: string) => {
+            const val = mergedProps[key];
+            return (val && val.trim() !== '') ? content : '';
+        }
+    );
+
+    // 2. Process {{prop|fallback}} pipe/default syntax
+    html = html.replace(
+        /\{\{\s*([\w-]+)\s*\|\s*([^}]*?)\s*\}\}/g,
+        (_match, key: string, fallback: string) => {
+            const val = mergedProps[key];
+            return escapeHtml((val && val.trim() !== '') ? val : fallback);
+        }
+    );
+
+    // 3. Replace simple {{key}} placeholders
     for (const [key, value] of Object.entries(mergedProps)) {
         html = html.replace(
             new RegExp(`\\{\\{\\s*${escapeRegex(key)}\\s*\\}\\}`, 'g'),
@@ -50,8 +70,9 @@ export function renderComponent(
         );
     }
 
-    // Remove any remaining unresolved placeholders
-    html = html.replace(/\{\{\s*\w[\w-]*\s*\}\}/g, '');
+    // 4. Remove any remaining unresolved placeholders
+    html = html.replace(/\{\{\s*[\w-]+(?:\s*\|[^}]*)?\s*\}\}/g, '');
+    html = html.replace(/\{\{#if\s+[\w-]+\}\}[\s\S]*?\{\{\/if\}\}/g, '');
 
     // Build scoped CSS by prefixing selectors with scope attribute
     let scopedCss = '';

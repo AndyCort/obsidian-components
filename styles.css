@@ -312,3 +312,42 @@
 	border-radius: 4px;
 	background: var(--background-primary);
 }
+
+/* ─── Component Picker Modal ─── */
+
+.oc-picker-item {
+	padding: 4px 0;
+}
+
+.oc-picker-row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+}
+
+.oc-picker-name {
+	font-weight: 700;
+	font-family: var(--font-monospace);
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.oc-picker-desc {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.oc-picker-props {
+	display: flex;
+	gap: 4px;
+	margin-top: 4px;
+}
+
+.oc-picker-prop-tag {
+	font-size: 10px;
+	padding: 1px 7px;
+	border-radius: 4px;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-family: var(--font-monospace);
+}
