@@ -1,0 +1,9 @@
+{
+	"id": "obsidian-components",
+	"name": "Obsidian Components",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Create reusable custom UI components and insert them into your notes with simple code blocks.",
+	"author": "Andy",
+	"isDesktopOnly": false
+}
