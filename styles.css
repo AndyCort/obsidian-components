@@ -367,3 +367,11 @@
 .oc-inline-wrapper .oc-inner {
 	display: inline;
 }
+
+/* Force all block-level children to inline when inside inline wrapper */
+.oc-inline-wrapper div,
+.oc-inline-wrapper p {
+	display: inline;
+	margin: 0;
+	padding: 0;
+}

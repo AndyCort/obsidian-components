@@ -11,6 +11,7 @@
     "keywords": [],
     "license": "MIT",
     "devDependencies": {
+        "@codemirror/language": "^6.12.1",
         "@types/node": "^16.11.6",
         "esbuild": "0.25.5",
         "tslib": "2.4.0",
