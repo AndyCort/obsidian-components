@@ -135,7 +135,7 @@ export default class ComponentsPlugin extends Plugin {
         });
 
         // Register inline component post-processor
-        // Syntax: ::component_name(prop="value"):: within regular text
+        // Syntax: `c:component_name(prop="value")` (inline code with c: prefix)
         this.registerMarkdownPostProcessor((el, ctx) => {
             this.processInlineComponents(el);
         });
@@ -376,131 +376,45 @@ export default class ComponentsPlugin extends Plugin {
 
     /**
      * Process inline components within rendered markdown.
-     * Scans for ::component_name(prop="value"):: pattern in text.
+     * Finds <code> elements with `c:` prefix and replaces them with rendered components.
+     * Syntax: `c:component_name(prop="value")`
      */
     processInlineComponents(el: HTMLElement): void {
-        // Skip if already processed
-        if (el.getAttribute('data-oc-processed')) return;
-        el.setAttribute('data-oc-processed', 'true');
+        // Find all <code> elements (inline code blocks)
+        const codeEls = el.querySelectorAll('code');
 
-        // Pattern: ::name:: or ::name(key="val", ...)::
-        const INLINE_PATTERN = /::[a-zA-Z_][\w-]*(?:\([^)]*\))?::/;
+        for (const codeEl of Array.from(codeEls)) {
+            const text = codeEl.textContent?.trim() ?? '';
 
-        // Find all elements that could contain inline text
-        const candidates = el.querySelectorAll(
-            'p, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, dd, dt, span, em, strong'
-        );
+            // Must start with "c:" prefix
+            if (!text.startsWith('c:')) continue;
 
-        // Also check the element itself
-        const elements: Element[] = [el, ...Array.from(candidates)];
+            // Extract the invocation part after "c:"
+            const invocationStr = text.slice(2).trim();
+            if (!invocationStr) continue;
 
-        for (const elem of elements) {
-            // Quick check: does any text content contain the pattern?
-            if (!elem.textContent || !INLINE_PATTERN.test(elem.textContent)) {
+            const invocation = parseComponentInvocation(invocationStr);
+            if (!invocation) continue;
+
+            const definition = this.components.get(invocation.name);
+            if (!definition) {
+                this.debug(`Inline: component "${invocation.name}" not found`);
                 continue;
             }
 
-            // Walk direct child nodes to find text nodes containing the pattern
-            this.replaceInlineInNode(elem);
+            this.debug(`Inline rendering: ${invocation.name}`, invocation.props);
+
+            // Create an inline span and render the component into it
+            const span = document.createElement('span');
+            span.className = 'oc-inline-wrapper';
+            renderComponent(span, definition, invocation.props, {
+                enableScripts: this.settings.enableScripts,
+                displayMode: 'inline',
+            });
+
+            // Replace the <code> element with the rendered component
+            codeEl.parentNode?.replaceChild(span, codeEl);
         }
-    }
-
-    /**
-     * Walk child nodes of an element and replace text nodes that contain
-     * inline component syntax with rendered component elements.
-     */
-    private replaceInlineInNode(element: Element): void {
-        const INLINE_PATTERN = /::[a-zA-Z_][\w-]*(?:\([^)]*\))?::/;
-
-        // Iterate over child nodes (snapshot to avoid live collection issues)
-        const children = Array.from(element.childNodes);
-
-        for (const child of children) {
-            if (child.nodeType === Node.TEXT_NODE) {
-                const text = child.textContent ?? '';
-                if (!INLINE_PATTERN.test(text)) continue;
-
-                // Split and rebuild this text node
-                const fragment = this.buildInlineFragment(text);
-                if (fragment) {
-                    child.parentNode?.replaceChild(fragment, child);
-                }
-            } else if (child.nodeType === Node.ELEMENT_NODE) {
-                const childEl = child as Element;
-                // Don't recurse into code blocks or already-processed components
-                const tag = childEl.tagName.toLowerCase();
-                if (tag === 'code' || tag === 'pre' ||
-                    childEl.classList.contains('obsidian-component')) {
-                    continue;
-                }
-                // Recurse into inline elements
-                if (['em', 'strong', 'span', 'a', 'mark', 'del', 'ins', 'sub', 'sup'].includes(tag)) {
-                    this.replaceInlineInNode(childEl);
-                }
-            }
-        }
-    }
-
-    /**
-     * Build a DocumentFragment from text containing ::component:: patterns.
-     */
-    private buildInlineFragment(text: string): DocumentFragment | null {
-        const globalRe = /::(([a-zA-Z_][\w-]*)(?:\([^)]*\))?)::/g;
-
-        const fragment = document.createDocumentFragment();
-        let lastIndex = 0;
-        let match: RegExpExecArray | null;
-        let hasMatch = false;
-
-        while ((match = globalRe.exec(text)) !== null) {
-            hasMatch = true;
-
-            // Add text before the match
-            if (match.index > lastIndex) {
-                fragment.appendChild(
-                    document.createTextNode(text.slice(lastIndex, match.index))
-                );
-            }
-
-            // Try to render the component
-            const invocationStr = match[1] ?? '';
-            const invocation = parseComponentInvocation(invocationStr);
-
-            if (invocation) {
-                const definition = this.components.get(invocation.name);
-                if (definition) {
-                    const span = document.createElement('span');
-                    span.className = 'oc-inline-wrapper';
-                    renderComponent(span, definition, invocation.props, {
-                        enableScripts: this.settings.enableScripts,
-                        displayMode: 'inline',
-                    });
-                    fragment.appendChild(span);
-                } else {
-                    // Unknown component — keep original text
-                    fragment.appendChild(
-                        document.createTextNode(match[0])
-                    );
-                }
-            } else {
-                fragment.appendChild(
-                    document.createTextNode(match[0])
-                );
-            }
-
-            lastIndex = match.index + match[0].length;
-        }
-
-        if (!hasMatch) return null;
-
-        // Add remaining text after last match
-        if (lastIndex < text.length) {
-            fragment.appendChild(
-                document.createTextNode(text.slice(lastIndex))
-            );
-        }
-
-        return fragment;
     }
 
     // ─── Helpers ────────────────────────────────────────────────────
