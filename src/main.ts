@@ -121,12 +121,14 @@ export default class ComponentsPlugin extends Plugin {
     components: Map<string, ComponentDefinition> = new Map();
 
     async onload() {
+        console.log('[obsidian-components] ✅ Plugin loaded v1.3.2');
         await this.loadSettings();
 
         // Load all component definitions from the components folder
         this.app.workspace.onLayoutReady(async () => {
             await this.ensureComponentsFolder();
             await this.loadComponentDefinitions();
+            console.log(`[obsidian-components] ✅ Components ready: ${this.components.size} loaded`);
         });
 
         // Register the 'component' code block processor
@@ -137,6 +139,7 @@ export default class ComponentsPlugin extends Plugin {
         // Register inline component post-processor
         // Syntax: `c:component_name(prop="value")` (inline code with c: prefix)
         this.registerMarkdownPostProcessor((el, ctx) => {
+            console.log('[oc-inline] Post-processor fired, el tag:', el.tagName, 'children:', el.childNodes.length);
             this.processInlineComponents(el);
         });
 
