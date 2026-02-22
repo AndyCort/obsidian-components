@@ -19,8 +19,8 @@ export function parseComponentDefinition(
     content: string,
     filePath: string
 ): ComponentDefinition | null {
-    // Extract frontmatter
-    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    // Extract frontmatter (allow leading whitespace or BOM)
+    const fmMatch = content.match(/^\s*---\r?\n([\s\S]*?)\r?\n---/);
     if (!fmMatch) {
         return null;
     }

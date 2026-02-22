@@ -401,6 +401,11 @@ export default class ComponentsPlugin extends Plugin {
             const def = parseComponentDefinition(content, file.path);
             if (def) {
                 this.components.set(def.name, def);
+                this.debug(`Loaded: ${def.name} from ${file.path}`);
+            } else {
+                console.warn(
+                    `[obsidian-components] ⚠️ Skipped "${file.path}": missing frontmatter (---) or template. Content starts with: "${content.slice(0, 50)}..."`
+                );
             }
         } catch (e) {
             console.error(
