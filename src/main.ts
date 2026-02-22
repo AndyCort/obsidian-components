@@ -376,74 +376,131 @@ export default class ComponentsPlugin extends Plugin {
 
     /**
      * Process inline components within rendered markdown.
-     * Scans text nodes for ::component_name(prop="value"):: pattern.
+     * Scans for ::component_name(prop="value"):: pattern in text.
      */
     processInlineComponents(el: HTMLElement): void {
-        // Regex to match ::component_name:: or ::component_name(props)::
-        const INLINE_RE = /::([a-zA-Z_][\w-]*(?:\([^)]*\))?)::/;
+        // Skip if already processed
+        if (el.getAttribute('data-oc-processed')) return;
+        el.setAttribute('data-oc-processed', 'true');
 
-        // Use TreeWalker to find all text nodes
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        const textNodes: Text[] = [];
-        let node: Text | null;
-        while ((node = walker.nextNode() as Text | null)) {
-            if (node.textContent && INLINE_RE.test(node.textContent)) {
-                textNodes.push(node);
+        // Pattern: ::name:: or ::name(key="val", ...)::
+        const INLINE_PATTERN = /::[a-zA-Z_][\w-]*(?:\([^)]*\))?::/;
+
+        // Find all elements that could contain inline text
+        const candidates = el.querySelectorAll(
+            'p, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, dd, dt, span, em, strong'
+        );
+
+        // Also check the element itself
+        const elements: Element[] = [el, ...Array.from(candidates)];
+
+        for (const elem of elements) {
+            // Quick check: does any text content contain the pattern?
+            if (!elem.textContent || !INLINE_PATTERN.test(elem.textContent)) {
+                continue;
             }
+
+            // Walk direct child nodes to find text nodes containing the pattern
+            this.replaceInlineInNode(elem);
         }
+    }
 
-        for (const textNode of textNodes) {
-            const text = textNode.textContent ?? '';
-            const parent = textNode.parentNode;
-            if (!parent) continue;
+    /**
+     * Walk child nodes of an element and replace text nodes that contain
+     * inline component syntax with rendered component elements.
+     */
+    private replaceInlineInNode(element: Element): void {
+        const INLINE_PATTERN = /::[a-zA-Z_][\w-]*(?:\([^)]*\))?::/;
 
-            // Split text around all inline component matches
-            const INLINE_GLOBAL = /::(([a-zA-Z_][\w-]*)(?:\([^)]*\))?)::/;
-            const parts = text.split(/::[a-zA-Z_][\w-]*(?:\([^)]*\))?::/);
-            const matches: RegExpExecArray[] = [];
-            const globalRe = new RegExp(INLINE_GLOBAL.source, 'g');
-            let m;
-            while ((m = globalRe.exec(text)) !== null) {
-                matches.push(m);
-            }
+        // Iterate over child nodes (snapshot to avoid live collection issues)
+        const children = Array.from(element.childNodes);
 
-            if (matches.length === 0) continue;
+        for (const child of children) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                const text = child.textContent ?? '';
+                if (!INLINE_PATTERN.test(text)) continue;
 
-            // Build replacement nodes: text, component, text, component, ...
-            const fragment = document.createDocumentFragment();
-            for (let i = 0; i < parts.length; i++) {
-                // Add the text before/between/after components
-                const part = parts[i];
-                if (part) {
-                    fragment.appendChild(document.createTextNode(part));
+                // Split and rebuild this text node
+                const fragment = this.buildInlineFragment(text);
+                if (fragment) {
+                    child.parentNode?.replaceChild(fragment, child);
                 }
-
-                // Add the component if there's a match at this position
-                if (i < matches.length) {
-                    const matchStr = matches[i]?.[1] ?? '';
-                    const invocation = parseComponentInvocation(matchStr);
-
-                    if (invocation) {
-                        const definition = this.components.get(invocation.name);
-                        if (definition) {
-                            const span = document.createElement('span');
-                            renderComponent(span, definition, invocation.props, {
-                                enableScripts: this.settings.enableScripts,
-                                displayMode: 'inline',
-                            });
-                            fragment.appendChild(span);
-                        } else {
-                            // Unknown component — leave as text
-                            fragment.appendChild(
-                                document.createTextNode(`::${matchStr}::`)
-                            );
-                        }
-                    }
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const childEl = child as Element;
+                // Don't recurse into code blocks or already-processed components
+                const tag = childEl.tagName.toLowerCase();
+                if (tag === 'code' || tag === 'pre' ||
+                    childEl.classList.contains('obsidian-component')) {
+                    continue;
+                }
+                // Recurse into inline elements
+                if (['em', 'strong', 'span', 'a', 'mark', 'del', 'ins', 'sub', 'sup'].includes(tag)) {
+                    this.replaceInlineInNode(childEl);
                 }
             }
-
-            parent.replaceChild(fragment, textNode);
         }
+    }
+
+    /**
+     * Build a DocumentFragment from text containing ::component:: patterns.
+     */
+    private buildInlineFragment(text: string): DocumentFragment | null {
+        const globalRe = /::(([a-zA-Z_][\w-]*)(?:\([^)]*\))?)::/g;
+
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        let hasMatch = false;
+
+        while ((match = globalRe.exec(text)) !== null) {
+            hasMatch = true;
+
+            // Add text before the match
+            if (match.index > lastIndex) {
+                fragment.appendChild(
+                    document.createTextNode(text.slice(lastIndex, match.index))
+                );
+            }
+
+            // Try to render the component
+            const invocationStr = match[1] ?? '';
+            const invocation = parseComponentInvocation(invocationStr);
+
+            if (invocation) {
+                const definition = this.components.get(invocation.name);
+                if (definition) {
+                    const span = document.createElement('span');
+                    span.className = 'oc-inline-wrapper';
+                    renderComponent(span, definition, invocation.props, {
+                        enableScripts: this.settings.enableScripts,
+                        displayMode: 'inline',
+                    });
+                    fragment.appendChild(span);
+                } else {
+                    // Unknown component — keep original text
+                    fragment.appendChild(
+                        document.createTextNode(match[0])
+                    );
+                }
+            } else {
+                fragment.appendChild(
+                    document.createTextNode(match[0])
+                );
+            }
+
+            lastIndex = match.index + match[0].length;
+        }
+
+        if (!hasMatch) return null;
+
+        // Add remaining text after last match
+        if (lastIndex < text.length) {
+            fragment.appendChild(
+                document.createTextNode(text.slice(lastIndex))
+            );
+        }
+
+        return fragment;
     }
 
     // ─── Helpers ────────────────────────────────────────────────────

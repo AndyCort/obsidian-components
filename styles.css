@@ -351,3 +351,19 @@
 	color: var(--text-muted);
 	font-family: var(--font-monospace);
 }
+
+/* ─── Inline Components ─── */
+
+.oc-inline-wrapper {
+	display: inline;
+	vertical-align: baseline;
+}
+
+.oc-inline-wrapper .obsidian-component {
+	display: inline;
+	margin: 0 2px;
+}
+
+.oc-inline-wrapper .oc-inner {
+	display: inline;
+}
