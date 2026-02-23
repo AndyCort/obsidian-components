@@ -6,7 +6,7 @@ props:
   name: ""
 ---
 
-<span class="oc-color-dot"></span>{{#if name}}<span class="oc-color-label">{{name}}</span>{{/if}}
+<span class="oc-color-dot" style="background: {{color}};"></span>{{#if name}}<span class="oc-color-label">{{name}}</span>{{/if}}
 
 <style>
 .oc-color-dot {

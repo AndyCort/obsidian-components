@@ -188,7 +188,7 @@ props:
   name: ""
 ---
 
-<span class="oc-color-dot"></span>{{#if name}}<span class="oc-color-label">{{name}}</span>{{/if}}
+<span class="oc-color-dot" style="background: {{color}};"></span>{{#if name}}<span class="oc-color-label">{{name}}</span>{{/if}}
 
 <style>
 .oc-color-dot { display: inline-block; width: 1em; height: 1em; border-radius: 50%; vertical-align: middle; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.1); flex-shrink: 0; }
