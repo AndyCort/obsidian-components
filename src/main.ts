@@ -354,7 +354,6 @@ export default class ComponentsPlugin extends Plugin {
                 await this.app.vault.createFolder(folderPath);
                 this.debug(`Created components folder: ${folderPath}`);
 
-                // Write example components
                 for (const [filename, content] of Object.entries(EXAMPLE_COMPONENTS)) {
                     await this.app.vault.create(`${folderPath}/${filename}`, content);
                 }
@@ -362,6 +361,24 @@ export default class ComponentsPlugin extends Plugin {
                 new Notice(`已创建组件文件夹 "${folderPath}" 并写入 ${Object.keys(EXAMPLE_COMPONENTS).length} 个示例组件`);
             } catch (e) {
                 console.error('[obsidian-components] Failed to create components folder:', e);
+            }
+        } else {
+            // Folder exists — add any missing example components
+            let added = 0;
+            for (const [filename, content] of Object.entries(EXAMPLE_COMPONENTS)) {
+                const filePath = `${folderPath}/${filename}`;
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (!file) {
+                    try {
+                        await this.app.vault.create(filePath, content);
+                        added++;
+                    } catch (e) {
+                        console.warn(`[obsidian-components] Could not create ${filePath}:`, e);
+                    }
+                }
+            }
+            if (added > 0) {
+                new Notice(`已添加 ${added} 个缺失的示例组件到 "${folderPath}"`);
             }
         }
     }
