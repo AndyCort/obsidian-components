@@ -29,7 +29,10 @@ props:
 <script>
 var dot = el.querySelector('.oc-color-dot');
 if (dot) {
-  var c = (props.color || '#6366f1').replace(/^(background(-image)?)\s*:\s*/i, '').replace(/;\s*$/, '');
+  var c = (props.color || '#6366f1').trim();
+  var idx = c.indexOf(':');
+  if (idx > 0 && idx < 20) c = c.slice(idx + 1).trim();
+  if (c.endsWith(';')) c = c.slice(0, -1).trim();
   dot.style.background = c;
   dot.title = c;
 }
