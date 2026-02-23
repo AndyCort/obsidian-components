@@ -3,37 +3,6 @@ name: color
 description: 行内圆形颜色展示
 props:
   color: "#6366f1"
-  name: ""
 ---
 
-<span class="oc-color-dot" style="background: {{color}};"></span>{{#if name}}<span class="oc-color-label">{{name}}</span>{{/if}}
-
-<style>
-.oc-color-dot {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  border-radius: 50%;
-  vertical-align: middle;
-  box-shadow: 0 0 0 1.5px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.1);
-  flex-shrink: 0;
-}
-.oc-color-label {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  margin-left: 3px;
-  vertical-align: middle;
-}
-</style>
-
-<script>
-var dot = el.querySelector('.oc-color-dot');
-if (dot) {
-  var c = (props.color || '#6366f1').trim();
-  var idx = c.indexOf(':');
-  if (idx > 0 && idx < 20) c = c.slice(idx + 1).trim();
-  if (c.endsWith(';')) c = c.slice(0, -1).trim();
-  dot.style.background = c;
-  dot.title = c;
-}
-</script>
+<span style="display:inline-block;width:1em;height:1em;border-radius:50%;vertical-align:middle;background:{{color}};box-shadow:0 0 0 1px rgba(0,0,0,0.1);"></span>
